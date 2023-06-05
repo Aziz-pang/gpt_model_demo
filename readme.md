@@ -1,5 +1,8 @@
 # 说明
 
+
+## 运行
+
 ## 文档
 
 - [openAI](https://platform.openai.com/docs/api-reference)
@@ -9,4 +12,5 @@
 
 ## 关于 ChatGPT API 费用
 
-https://juejin.cn/post/7206249233115643959
+ - https://juejin.cn/post/7206249233115643959
+ - 官网：https://openai.com/pricing

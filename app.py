@@ -6,12 +6,11 @@ import os
 
 from llama_index import SimpleDirectoryReader, GPTListIndex, GPTVectorStoreIndex, LLMPredictor, PromptHelper, ServiceContext
 from langchain import OpenAI
-from langchain.chat_models import ChatOpenAI
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
-os.environ["OPENAI_API_KEY"] = os.getenv('API_CHAT_GPT')
+os.environ["OPENAI_API_KEY"] = os.getenv('API_CHAT_GPT_CHOO')
 
 
 def construct_index(directory_path):
@@ -26,24 +25,24 @@ def construct_index(directory_path):
     chunk_size_limit = 600
 
     prompt_helper = PromptHelper(
-        context_window,  num_outputs,  chunk_overlap_ratio, chunk_size_limit, tokenizer, separator, max_input_size, embedding_limit, max_chunk_overlap)
+        context_window,  num_outputs, chunk_overlap_ratio, chunk_size_limit, tokenizer, separator, embedding_limit, max_chunk_overlap)
     # 模型 gpt-3.5-turbo
     llm_predictor = LLMPredictor(llm=OpenAI(
         temperature=0.7, model_name="gpt-3.5-turbo3", max_tokens=num_outputs))
 
-    documents = SimpleDirectoryReader(directory_path).load_data()
-    llm_predictor = LLMPredictor(llm=ChatOpenAI(
-        temperature=0, model_name="gpt-3.5-turbo", streaming=True))
-    service_context = ServiceContext.from_defaults(
-        llm_predictor=llm_predictor, chunk_size=512)
-    index = GPTVectorStoreIndex.from_documents(
-        documents, service_context=service_context)
-
     # documents = SimpleDirectoryReader(directory_path).load_data()
+    # llm_predictor = LLMPredictor(llm=ChatOpenAI(
+    #     temperature=0, model_name="gpt-3.5-turbo", streaming=True))
+    # service_context = ServiceContext.from_defaults(
+    #     llm_predictor=llm_predictor, chunk_size=512)
     # index = GPTVectorStoreIndex.from_documents(
-    #     documents, llm_predictor=llm_predictor, prompt_helper=prompt_helper)
-    print('index',index)
+    #     documents, service_context=service_context)
+
+    documents = SimpleDirectoryReader(directory_path).load_data()
+    index = GPTVectorStoreIndex.from_documents(
+        documents, llm_predictor=llm_predictor, prompt_helper=prompt_helper)
     index.save_to_disk('index.json')
+    print(index)
     return index
 
 
@@ -58,5 +57,5 @@ iface = gr.Interface(fn=chatbot,
                          lines=7, label="Enter your text"),
                      outputs="text",
                      title="Custom-trained AI Chatbot")
-index = construct_index("docs")
+index = construct_index("testData")
 iface.launch(share=True)
