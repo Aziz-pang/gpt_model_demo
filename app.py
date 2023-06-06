@@ -4,7 +4,7 @@ import logging
 import sys
 import os
 
-from llama_index import SimpleDirectoryReader, GPTListIndex, GPTVectorStoreIndex, LLMPredictor, PromptHelper, ServiceContext
+from llama_index import SimpleDirectoryReader, load_index_from_storage, GPTVectorStoreIndex, LLMPredictor, PromptHelper, StorageContext
 from langchain import OpenAI
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -15,7 +15,6 @@ os.environ["OPENAI_API_KEY"] = os.getenv('API_CHAT_GPT_CHOO')
 
 def construct_index(directory_path):
     context_window = 2058
-    max_input_size = 4096
     num_outputs = 512
     max_chunk_overlap = 20
     tokenizer = None
@@ -30,32 +29,27 @@ def construct_index(directory_path):
     llm_predictor = LLMPredictor(llm=OpenAI(
         temperature=0.7, model_name="gpt-3.5-turbo3", max_tokens=num_outputs))
 
-    # documents = SimpleDirectoryReader(directory_path).load_data()
-    # llm_predictor = LLMPredictor(llm=ChatOpenAI(
-    #     temperature=0, model_name="gpt-3.5-turbo", streaming=True))
-    # service_context = ServiceContext.from_defaults(
-    #     llm_predictor=llm_predictor, chunk_size=512)
-    # index = GPTVectorStoreIndex.from_documents(
-    #     documents, service_context=service_context)
-
     documents = SimpleDirectoryReader(directory_path).load_data()
     index = GPTVectorStoreIndex.from_documents(
         documents, llm_predictor=llm_predictor, prompt_helper=prompt_helper)
-    index.save_to_disk('index.json')
-    print(index)
+    index.storage_context.persist('persist_dir')
     return index
 
+from llama_index.query_engine import RetrieverQueryEngine
 
 def chatbot(input_text):
-    index = GPTVectorStoreIndex.load_from_disk('index.json')
-    response = index.query(input_text, response_mode="compact")
-    return response.response
+    storage_context = StorageContext.from_defaults(persist_dir="persist_dir")
+    index = load_index_from_storage(storage_context)
+    retriever = index.as_retriever()
+    query_engine = RetrieverQueryEngine.from_args(retriever, response_mode='compact')
+    response = query_engine.query(input_text)
+    return str(response)
 
 
 iface = gr.Interface(fn=chatbot,
                      inputs=gr.inputs.Textbox(
-                         lines=7, label="Enter your text"),
-                     outputs="text",
-                     title="Custom-trained AI Chatbot")
+                         lines=7, label="请输入你的问题"),
+                     outputs=gr.Textbox(lines=7, label="机器人的回答"),
+                     title="AI Chatbot 训练")
 index = construct_index("testData")
 iface.launch(share=True)
